@@ -1,6 +1,6 @@
-package org.Client;
+package org.Server;
 
-import com.Product.Product;
+import com.Product.Product.Product;
 
 import java.io.*;
 import java.net.Socket;
@@ -28,6 +28,7 @@ public class ClientHandler implements Runnable {
             clientName = in.readLine();
             System.out.println(clientName + " s-a conectat la server.");
             out.println("Bun venit la platforma de vânzări, " + clientName + "!");
+            out.println("Foloseste comanda: 'cumpar <model> <cantitate>'");
             sendProductList();
 
             // Așteaptă comenzi
@@ -182,5 +183,8 @@ public class ClientHandler implements Runnable {
                     .append(product.getQuantity()).append("\n");
         }
         out.println(stockInfo.toString());
+    }
+
+    public void sendMessage(String loginSuccess) {
     }
 }

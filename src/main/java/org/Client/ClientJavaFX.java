@@ -28,12 +28,9 @@ public class ClientJavaFX extends Application {
         VBox root = new VBox(10);
         root.setPadding(new Insets(10));
 
-        Label nameLabel = new Label("Introdu numele tău:");
-        TextField nameField = new TextField();
-
-        Button connectButton = new Button("Conectează-te");
         messagesArea = new TextArea();
         messagesArea.setEditable(false);
+        messagesArea.setWrapText(true); // Allow the text to wrap for better readability
 
         commandField = new TextField();
         commandField.setPromptText("Scrie o comandă...");
@@ -44,60 +41,19 @@ public class ClientJavaFX extends Application {
 
         HBox commandBox = new HBox(10, commandField, sendButton, viewCartButton, finalizeOrderButton);
 
-        root.getChildren().addAll(nameLabel, nameField, connectButton, messagesArea, commandBox);
+        root.getChildren().addAll(messagesArea, commandBox);
 
         Scene scene = new Scene(root, 600, 400);
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        // Eveniment pentru conectare
-        connectButton.setOnAction(event -> {
-            String name = nameField.getText().trim();
-            if (!name.isEmpty()) {
-                connectToServer(name);
-                connectButton.setDisable(true);
-                nameField.setDisable(true);
-            } else {
-                messagesArea.appendText("Te rog să introduci un nume valid.\n");
-            }
-        });
+        // Conectare la server automat
+        connectToServer();
 
-        // Eveniment pentru trimiterea comenzilor
+        // Evenimente pentru butoane
         sendButton.setOnAction(event -> sendCommand());
         viewCartButton.setOnAction(event -> sendViewCartCommand());
         finalizeOrderButton.setOnAction(event -> sendFinalizeOrderCommand());
-    }
-
-    private void connectToServer(String name) {
-        try {
-            Socket socket = new Socket("192.168.0.102", 12345); // IP-ul serverului tău
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(socket.getOutputStream(), true);
-
-            // Trimite numele clientului
-            out.println(name);
-
-            // Thread pentru primirea mesajelor
-            new Thread(() -> {
-                try {
-                    String message;
-                    while ((message = in.readLine()) != null) {
-                        final String receivedMessage = message;
-                        Platform.runLater(() -> messagesArea.appendText(receivedMessage + "\n"));
-
-                        // Verificăm dacă mesajul este o actualizare de stoc
-                        if (receivedMessage.startsWith("STOCK_UPDATE")) {
-                            Platform.runLater(() -> updateStock(receivedMessage));
-                        }
-                    }
-                } catch (IOException e) {
-                    Platform.runLater(() -> messagesArea.appendText("Conexiunea cu serverul a fost întreruptă.\n"));
-                }
-            }).start();
-
-        } catch (IOException e) {
-            messagesArea.appendText("Eroare la conectarea cu serverul.\n");
-        }
     }
 
     private void sendCommand() {
@@ -120,12 +76,56 @@ public class ClientJavaFX extends Application {
         }
     }
 
+    private void connectToServer() {
+        try {
+            String userName = System.getProperty("username"); // Obține numele utilizatorului conectat
+            Socket socket = new Socket("192.168.0.102", 12345); // IP-ul serverului tău
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            out = new PrintWriter(socket.getOutputStream(), true);
 
-    private void updateStock(String message) {
-        // Extragem informațiile din mesaj și actualizăm zona de text
-        String[] parts = message.split(":");
-        if (parts.length > 1) {
-            messagesArea.appendText("Actualizare stoc:\n" + parts[1] + "\n");
+            // Trimite numele utilizatorului către server
+            out.println(userName);
+
+            // Thread pentru primirea mesajelor
+            new Thread(() -> {
+                try {
+                    String message;
+                    while ((message = in.readLine()) != null) {
+                        final String receivedMessage = message;
+                        Platform.runLater(() -> messagesArea.appendText(receivedMessage + "\n"));
+
+                        // Actualizează lista de produse sau coș
+                        if (receivedMessage.startsWith("PRODUCT_LIST")) {
+                            updateProductList(receivedMessage);
+                        } else if (receivedMessage.startsWith("CART_LIST")) {
+                            updateCartList(receivedMessage);
+                        }
+                    }
+                } catch (IOException e) {
+                    Platform.runLater(() -> messagesArea.appendText("Conexiunea cu serverul a fost întreruptă.\n"));
+                }
+            }).start();
+
+        } catch (IOException e) {
+            messagesArea.appendText("Eroare la conectarea cu serverul.\n");
+        }
+    }
+
+    private void updateProductList(String message) {
+        String[] products = message.split("\n");
+        for (String product : products) {
+            if (!product.isEmpty() && !product.startsWith("PRODUCT_LIST")) {
+                messagesArea.appendText("Produs: " + product + "\n");
+            }
+        }
+    }
+
+    private void updateCartList(String message) {
+        String[] cartItems = message.split("\n");
+        for (String item : cartItems) {
+            if (!item.isEmpty() && !item.startsWith("CART_LIST")) {
+                messagesArea.appendText("Coș: " + item + "\n");
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.Product;
+package com.Product.Product;
 
 public class Product {
     private String name;
@@ -61,8 +61,11 @@ public class Product {
         this.quantity -= quantity;
     }
 
+
     @Override
     public String toString() {
         return name + " (" + model + ") - " + price + " lei - " + quantity + " buc.";
     }
+
+
 }
